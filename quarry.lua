@@ -11,9 +11,6 @@ miningState = { START=0, LAYER=1, EMPTYCHESTDOWN=2, EMPTYINVENTORY=3 }
 
 local messageOutputLevel = messageLevel.DEBUG
 local messageOutputFileName
-local fuelLevelToRefuelAt = 5
-local refuelItemsToUseWhenRefuelling = 63
-local emergencyFuelToRetain = 0
 local maximumGravelStackSupported = 25 -- The number of stacked gravel or sand blocks supported
 local returningToStart = false
 local miningOffset = 1 -- The offset to the mining layer. This is set depending on whether chests are being looked for or not
@@ -81,43 +78,6 @@ function writeMessage(message, msgLevel)
       outputFile:write(message)
       outputFile:write("\n")
       outputFile:close()
-    end
-  end
-end
-
--- ********************************************************************************** --
--- Ensures that the turtle has fuel
--- ********************************************************************************** --
-function ensureFuel()
-
-  -- Determine whether a refuel is required
-  local fuelLevel = turtle.getFuelLevel()
-  if (fuelLevel ~= "unlimited") then
-    if (fuelLevel < fuelLevelToRefuelAt) then
-      -- Need to refuel
-      turtle.select(16)
-      currentlySelectedSlot = 16
-      local fuelItems = turtle.getItemCount(16)
-
-      -- Do we need to impact the emergency fuel to continue? (always
-      -- keep one fuel item in slot 16)
-      if (fuelItems == 0) then
-        writeMessage("Completely out of fuel!", messageLevel.FATAL)
-      elseif (fuelItems == 1) then
-        writeMessage("Out of Fuel!", messageLevel.ERROR)
-        turtle.refuel()
-      elseif (fuelItems <= (emergencyFuelToRetain + 1)) then
-        writeMessage("Consuming emergency fuel supply. "..(fuelItems - 2).." emergency fuel items remain", messageLevel.WARNING)
-        turtle.refuel(1)
-      else
-        -- Refuel the lesser of the refuelItemsToUseWhenRefuelling and the number of items more than
-        -- the emergency fuel level
-        if (fuelItems - (emergencyFuelToRetain + 1) < refuelItemsToUseWhenRefuelling) then
-          turtle.refuel(fuelItems - (emergencyFuelToRetain + 1))
-        else
-          turtle.refuel(refuelItemsToUseWhenRefuelling)
-        end
-      end
     end
   end
 end
@@ -304,8 +264,8 @@ function returnToStartAndUnload(returnBackToMiningPoint)
     -- Face the chest
     turtleSetOrientation(direction.BACK)
 
-    -- Loop over each of the slots (except the 16th one which stores fuel)
-    while (slotLoop < 16) do
+    -- Loop over each of the slots
+    while (slotLoop <= 16) do
       turtle.select(slotLoop) -- Don't bother updating selected slot variable as it will set later in this function
       -- Drop all the items in this slot
       writeMessage("Dropping (all) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
@@ -314,30 +274,6 @@ function returnToStartAndUnload(returnBackToMiningPoint)
       end
 
       slotLoop = slotLoop + 1
-    end
-
-    -- While we are here, refill the fuel items if there is capacity
-    if (turtle.getItemCount(16) < 64) then
-      turtleSetOrientation(direction.LEFT)
-      turtle.select(16) -- Don't bother updating selected slot variable as it will set later in this function
-      local currFuelItems = turtle.getItemCount(16)
-      turtle.suck()
-      while ((currFuelItems ~= turtle.getItemCount(16)) and (turtle.getItemCount(16) < 64)) do
-        currFuelItems = turtle.getItemCount(16)
-        turtle.suck()
-      end
-
-      slotLoop = 1
-      -- Have now picked up all the items that we can. If we have also picked up some
-      -- additional fuel in some of the other slots, then drop it again
-      while (slotLoop <= lastEmptySlot) do
-        -- Drop any items found in this slot
-        if (turtle.getItemCount(slotLoop) > 0) then
-          turtle.select(slotLoop) -- Don't bother updating selected slot variable as it will set later in this function
-          turtle.dropUp()
-        end
-        slotLoop = slotLoop + 1
-      end
     end
 
     -- Select the 1st slot because sometimes when leaving the 15th or 16th slots selected it can result
@@ -561,8 +497,6 @@ function moveTurtle(moveFn, detectFn, digFn, attackFn, compareFn, suckFn, maxDig
     prevX = currX
     prevY = currY
     prevZ = currZ
-
-    ensureFuel()
 
     -- Flag to determine whether digging has been tried yet. If it has
     -- then pause briefly before digging again to allow sand or gravel to
