@@ -1,7 +1,7 @@
 -- user configuration
 local farmLength = 30
 local partsCount = 4
-local sleepTime = 2 * 60
+local sleepTime = 5 * 60
 
 -- forward over one entire row of melons and break it
 function forwardAndDig()
