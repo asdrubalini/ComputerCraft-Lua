@@ -1023,21 +1023,6 @@ function turtleSetOrientation(newOrient)
 end
 
 -- ********************************************************************************** --
--- Determines if a particular block is a chest. Returns false if it is not a chest
--- or chests are not being detected
--- ********************************************************************************** --
-function isChestBlock(compareFn)
-
-  -- Check the block in the appropriate direction to see whether it is a chest. Only
-  -- do this if we are looking for chests
-  local returnVal = false
-
-  -- Return the calculated value
-  return returnVal
-
-end
-
--- ********************************************************************************** --
 -- Creates a quarry
 -- ********************************************************************************** --
 function createQuarry()
@@ -1156,23 +1141,8 @@ function createQuarry()
           ensureInventorySpace()
 
           if (turtle.detectDown() == true) then
-            if (isChestBlock(turtle.compareDown) == true) then
-              -- There is a chest block below. Move back and approach
-              -- from the side to ensure that we don't need to return to
-              -- start through the chest itself (potentially losing items)
-              turtleBack()
-              turtleDown()
-              currMiningState = miningState.EMPTYCHESTDOWN
-              emptyChest(turtle.suck)
-              currMiningState = miningState.LAYER
-              turtleUp()
-              turtleForward()
-              turtle.digDown()
-              ensureInventorySpace()
-            else
-              turtle.digDown()
-              ensureInventorySpace()
-            end
+            turtle.digDown()
+            ensureInventorySpace()
           end
         end
 
@@ -1249,23 +1219,8 @@ function createQuarry()
           ensureInventorySpace()
           
           if (turtle.detectDown() == true) then
-            if (isChestBlock(turtle.compareDown) == true) then
-              -- There is a chest block below. Move back and approach
-              -- from the side to ensure that we don't need to return to
-              -- start through the chest itself (potentially losing items)
-              turtleBack()
-              currMiningState = miningState.EMPTYCHESTDOWN
-              turtleDown()
-              emptyChest(turtle.suck)
-              currMiningState = miningState.LAYER
-              turtleUp()
-              turtleForward()
-              turtle.digDown()
-              ensureInventorySpace()
-            else
-              turtle.digDown()
-              ensureInventorySpace()
-            end
+            turtle.digDown()
+            ensureInventorySpace()
           end
         end
 
@@ -1279,16 +1234,8 @@ function createQuarry()
           ensureInventorySpace()
 
           if (turtle.detectUp() == true) then
-            -- Determine if it is a chest before digging it
-            if (isChestBlock(turtle.compareUp) == true) then
-              -- There is a chest block above. Empty it before digging it
-              emptyChest(turtle.suckUp)
-              turtle.digUp()
-              ensureInventorySpace()
-            else
-              turtle.digUp()
-              ensureInventorySpace()
-            end
+            turtle.digUp()
+            ensureInventorySpace()
           end
         end
       end
