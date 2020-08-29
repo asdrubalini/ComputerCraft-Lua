@@ -1,7 +1,3 @@
--- ********************************************************************************** --
--- Note: If you are in a world with flat bedrock, change the value below from 5 to 2.
---       You don't need to change this, but the turtle is slightly faster if you do.
--- ********************************************************************************** --
 local bottomLayer = 5 -- The y co-ords of the layer immediately above bedrock
 
 -- Enumeration to store the the different types of message that can be written
@@ -19,11 +15,9 @@ local fuelLevelToRefuelAt = 5
 local refuelItemsToUseWhenRefuelling = 63
 local emergencyFuelToRetain = 0
 local maximumGravelStackSupported = 25 -- The number of stacked gravel or sand blocks supported
-local noiseBlocksCount
 local returningToStart = false
-local lookForChests = false -- Determines if chests should be located as part of the quarrying
-local miningOffset -- The offset to the mining layer. This is set depending on whether chests are being looked for or not
-local lastEmptySlot -- The last inventory slot that was empty when the program started (is either 15 if not looking for chests or 14 if we are)
+local miningOffset = 1 -- The offset to the mining layer. This is set depending on whether chests are being looked for or not
+local lastEmptySlot = 15 -- Never supporting chests
 local turtleId
 local isWirelessTurtle
 local currentlySelectedSlot = 0 -- The slot that the last noise block was found in
@@ -312,20 +306,11 @@ function returnToStartAndUnload(returnBackToMiningPoint)
 
     -- Loop over each of the slots (except the 16th one which stores fuel)
     while (slotLoop < 16) do
-      -- If this is one of the slots that contains a noise block, empty all blocks except
-      -- one
       turtle.select(slotLoop) -- Don't bother updating selected slot variable as it will set later in this function
-      if ((slotLoop <= noiseBlocksCount) or ((slotLoop == 15) and (lastEmptySlot == 14))) then
-        writeMessage("Dropping (n-1) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
-        if (turtle.getItemCount(slotLoop) > 0) then
-          turtle.drop(turtle.getItemCount(slotLoop) - 1)
-        end
-      else
-        -- Not a noise block, drop all of the items in this slot
-        writeMessage("Dropping (all) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
-        if (turtle.getItemCount(slotLoop) > 0) then
-          turtle.dropUp()
-        end
+      -- Drop all the items in this slot
+      writeMessage("Dropping (all) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
+      if (turtle.getItemCount(slotLoop) > 0) then
+        turtle.dropUp()
       end
 
       slotLoop = slotLoop + 1
@@ -342,7 +327,7 @@ function returnToStartAndUnload(returnBackToMiningPoint)
         turtle.suck()
       end
 
-      slotLoop = noiseBlocksCount + 1
+      slotLoop = 1
       -- Have now picked up all the items that we can. If we have also picked up some
       -- additional fuel in some of the other slots, then drop it again
       while (slotLoop <= lastEmptySlot) do
@@ -605,19 +590,6 @@ function moveTurtle(moveFn, detectFn, digFn, attackFn, compareFn, suckFn, maxDig
       -- Don't need to set the last move needed dig. It is already false, if
       -- move success is now true, then it won't be changed
     else
-      -- If we are looking for chests, then check that this isn't a chest before trying to dig it
-      if (lookForChests == true) then
-        if (isNoiseBlock(compareFn) == false) then
-          if (detectFn() == true) then
-            -- Determine if it is a chest before digging it
-            if (isChestBlock(compareFn) == true) then
-              -- Have found a chest, empty it before continuing
-              emptyChest (suckFn)
-            end
-          end
-        end
-      end
-
       -- Try to dig (without doing a detect as it is quicker)
       local digSuccess = digFn()
       if (digSuccess == true) then
@@ -651,21 +623,7 @@ function moveTurtle(moveFn, detectFn, digFn, attackFn, compareFn, suckFn, maxDig
 
           -- If we've already tried digging, then pause before digging again to let
           -- any sand or gravel drop, otherwise check for a chest before digging
-          if(digCount == 0) then
-            -- Am about to dig a block - check that it is not a chest if necessary
-            -- If we are looking for chests, then check that this isn't a chest before moving
-            if (lookForChests == true) then
-              if (isNoiseBlock(compareFn) == false) then
-                if (detectFn() == true) then
-                  -- Determine if it is a chest before digging it
-                  if (isChestBlock(compareFn) == true) then
-                    -- Have found a chest, empty it before continuing
-                    emptyChest (suckFn)
-                  end
-                end
-              end
-            end
-          else
+          if (digCount ~= 0) then
             sleep(0.1)
           end
 
@@ -1065,49 +1023,6 @@ function turtleSetOrientation(newOrient)
 end
 
 -- ********************************************************************************** --
--- Determines if a particular block is considered a noise block or not. A noise
--- block is one that is a standard block in the game (stone, dirt, gravel etc.) and
--- is one to ignore as not being an ore. Function works by comparing the block
--- in question against a set of blocks in the turtle's inventory which are known not to
--- be noise blocks. Param is the function to use to compare the block for a noise block
--- ********************************************************************************** --
-function isNoiseBlock(compareFn)
-
-  -- Consider air to be a noise block
-  local returnVal = false
-
-  if (resuming == true) then
-    returnVal = true
-  else
-    local seamLoop = 1
-    local prevSelectedSlot
-
-    -- If the currently selected slot is a noise block, then compare against this first
-    -- so that the slot doesn't need to be selected again (there is a 0.05s cost to do
-    -- this even if it is the currently selected slot)
-    if (currentlySelectedSlot <= noiseBlocksCount) then
-      returnVal = compareFn()
-    end
-
-    if (returnVal == false) then
-      prevSelectedSlot = currentlySelectedSlot
-      while((returnVal == false) and (seamLoop <= noiseBlocksCount)) do
-        if (seamLoop ~= prevSelectedSlot) then
-          turtle.select(seamLoop)
-          currentlySelectedSlot = seamLoop
-          returnVal = compareFn()
-        end
-        seamLoop = seamLoop + 1
-      end
-    end
-  end
-
-  -- Return the calculated value
-  return returnVal
-
-end
-
--- ********************************************************************************** --
 -- Determines if a particular block is a chest. Returns false if it is not a chest
 -- or chests are not being detected
 -- ********************************************************************************** --
@@ -1116,11 +1031,6 @@ function isChestBlock(compareFn)
   -- Check the block in the appropriate direction to see whether it is a chest. Only
   -- do this if we are looking for chests
   local returnVal = false
-  if (lookForChests == true) then
-    turtle.select(15)
-    currentlySelectedSlot = 15
-    returnVal = compareFn()
-  end
 
   -- Return the calculated value
   return returnVal
@@ -1128,40 +1038,7 @@ function isChestBlock(compareFn)
 end
 
 -- ********************************************************************************** --
--- Function to calculate the number of non seam blocks in the turtle's inventory. This
--- is all of the blocks at the start of the inventory (before the first empty slot is
--- found
--- ********************************************************************************** --
-function determineNoiseBlocksCountCount()
-  -- Determine the location of the first empty inventory slot. All items before this represent
-  -- noise items.
-  local foundFirstBlankInventorySlot = false
-  noiseBlocksCount = 1
-  while ((noiseBlocksCount < 16) and (foundFirstBlankInventorySlot == false)) do
-    if (turtle.getItemCount(noiseBlocksCount) > 0) then
-      noiseBlocksCount = noiseBlocksCount + 1
-    else
-      foundFirstBlankInventorySlot = true
-    end
-  end
-  noiseBlocksCount = noiseBlocksCount - 1
-
-  -- Determine whether a chest was provided, and hence whether we should support
-  -- looking for chests
-  if (turtle.getItemCount(15) > 0) then
-    lookForChests = true
-    lastEmptySlot = 14
-    miningOffset = 0
-    writeMessage("Looking for chests...", messageLevel.DEBUG)
-  else
-    lastEmptySlot = 15
-    miningOffset = 1
-    writeMessage("Ignoring chests...", messageLevel.DEBUG)
-  end
-end
-
--- ********************************************************************************** --
--- Creates a quarry mining out only ores and leaving behind any noise blocks
+-- Creates a quarry
 -- ********************************************************************************** --
 function createQuarry()
 
@@ -1242,14 +1119,12 @@ function createQuarry()
     for mineRows = 1, quarryWidth do
 
       -- If this is not the first row, then get into position to mine the next row
-      if ((mineRows == 1) and (lookForChests == false)) then
+      if ((mineRows == 1)) then
         -- Not looking for chests, check the block below for being an ore. Only do this
         -- if we're not looking for chests since the program doesn't support chests in
         -- bedrock
-        if (isNoiseBlock(turtle.compareDown) == false) then
-          turtle.digDown()
-          ensureInventorySpace()
-        end
+        turtle.digDown()
+        ensureInventorySpace()
       elseif (mineRows > 1) then
         -- Move into position for mining the next row
         if (onNearSideOfQuarry == diggingAway) then
@@ -1277,31 +1152,26 @@ function createQuarry()
         -- out of the quarry area (unless at bedrock in which case don't bother
         -- as we'll be digging down anyway)
         if (miningLevel ~= bottomLayer) then
-          if (isNoiseBlock(turtle.compareDown) == false) then
-            -- If we are not looking for chests, then just dig it (it takes
-            -- less time to try to dig and fail as it does to do detect and
-            -- only dig if there is a block there)
-            if (lookForChests == false) then
+          turtle.digDown()
+          ensureInventorySpace()
+
+          if (turtle.detectDown() == true) then
+            if (isChestBlock(turtle.compareDown) == true) then
+              -- There is a chest block below. Move back and approach
+              -- from the side to ensure that we don't need to return to
+              -- start through the chest itself (potentially losing items)
+              turtleBack()
+              turtleDown()
+              currMiningState = miningState.EMPTYCHESTDOWN
+              emptyChest(turtle.suck)
+              currMiningState = miningState.LAYER
+              turtleUp()
+              turtleForward()
               turtle.digDown()
               ensureInventorySpace()
-            elseif (turtle.detectDown() == true) then
-              if (isChestBlock(turtle.compareDown) == true) then
-                -- There is a chest block below. Move back and approach
-                -- from the side to ensure that we don't need to return to
-                -- start through the chest itself (potentially losing items)
-                turtleBack()
-                turtleDown()
-                currMiningState = miningState.EMPTYCHESTDOWN
-                emptyChest(turtle.suck)
-                currMiningState = miningState.LAYER
-                turtleUp()
-                turtleForward()
-                turtle.digDown()
-                ensureInventorySpace()
-              else
-                turtle.digDown()
-                ensureInventorySpace()
-              end
+            else
+              turtle.digDown()
+              ensureInventorySpace()
             end
           end
         end
@@ -1345,12 +1215,6 @@ function createQuarry()
         -- If currently at bedrock, just move down until the turtle can't go any
         -- further. This allows the blocks within the bedrock to be mined
         if (miningLevel == bottomLayer) then
-          -- Temporarily turn off looking for chests to increase bedrock mining speed (this
-          -- means that the program doesn't support chests below level 5 - but I think
-          -- they they don't exist anyway)
-          local lookForChestsPrev = lookForChests
-          lookForChests = false
-
           -- Manually set the flag to determine whether the turtle should try to move first or
           -- dig first. At bedrock, is very rarely any space
 
@@ -1374,40 +1238,33 @@ function createQuarry()
           -- Now back at the level above bedrock, again reset the flag to tell the turtle to
           -- try digging again (because it is rare to find air at bedrock level)
           lastMoveNeededDig = false
-
-          -- Reset the look for chests value
-          lookForChests = lookForChestsPrev
         elseif ((blocksMined > 0) and ((currX ~= 0) or (currZ ~= 0))) then
           -- This isn't the first block of the row, nor are we at (0, 0) so we need to check the
           -- block below
 
-          -- Check the block down for being a noise block (don't need to check the first
-          -- block as it has already been checked in the outer loop)
-          if (isNoiseBlock(turtle.compareDown) == false) then
-            -- If we are not looking for chests, then just dig it (it takes
-            -- less time to try to dig and fail as it does to do detect and
-            -- only dig if there is a block there)
-            if (lookForChests == false) then
+          -- If we are not looking for chests, then just dig it (it takes
+          -- less time to try to dig and fail as it does to do detect and
+          -- only dig if there is a block there)
+          turtle.digDown()
+          ensureInventorySpace()
+          
+          if (turtle.detectDown() == true) then
+            if (isChestBlock(turtle.compareDown) == true) then
+              -- There is a chest block below. Move back and approach
+              -- from the side to ensure that we don't need to return to
+              -- start through the chest itself (potentially losing items)
+              turtleBack()
+              currMiningState = miningState.EMPTYCHESTDOWN
+              turtleDown()
+              emptyChest(turtle.suck)
+              currMiningState = miningState.LAYER
+              turtleUp()
+              turtleForward()
               turtle.digDown()
               ensureInventorySpace()
-            elseif (turtle.detectDown() == true) then
-              if (isChestBlock(turtle.compareDown) == true) then
-                -- There is a chest block below. Move back and approach
-                -- from the side to ensure that we don't need to return to
-                -- start through the chest itself (potentially losing items)
-                turtleBack()
-                currMiningState = miningState.EMPTYCHESTDOWN
-                turtleDown()
-                emptyChest(turtle.suck)
-                currMiningState = miningState.LAYER
-                turtleUp()
-                turtleForward()
-                turtle.digDown()
-                ensureInventorySpace()
-              else
-                turtle.digDown()
-                ensureInventorySpace()
-              end
+            else
+              turtle.digDown()
+              ensureInventorySpace()
             end
           end
         end
@@ -1415,24 +1272,22 @@ function createQuarry()
         -- Check the block above for ores (if we're not a (0, 0) in which case
         -- we know it's air)
         if ((currX ~= 0) or (currZ ~= 0)) then
-          if (isNoiseBlock(turtle.compareUp) == false) then
-            -- If we are not looking for chests, then just dig it (it takes
-            -- less time to try to dig and fail as it does to do detect and
-            -- only dig if there is a block there)
-            if (lookForChests == false) then
+          -- If we are not looking for chests, then just dig it (it takes
+          -- less time to try to dig and fail as it does to do detect and
+          -- only dig if there is a block there)
+          turtle.digUp()
+          ensureInventorySpace()
+
+          if (turtle.detectUp() == true) then
+            -- Determine if it is a chest before digging it
+            if (isChestBlock(turtle.compareUp) == true) then
+              -- There is a chest block above. Empty it before digging it
+              emptyChest(turtle.suckUp)
               turtle.digUp()
               ensureInventorySpace()
-            elseif (turtle.detectUp() == true) then
-              -- Determine if it is a chest before digging it
-              if (isChestBlock(turtle.compareUp) == true) then
-                -- There is a chest block above. Empty it before digging it
-                emptyChest(turtle.suckUp)
-                turtle.digUp()
-                ensureInventorySpace()
-              else
-                turtle.digUp()
-                ensureInventorySpace()
-              end
+            else
+              turtle.digUp()
+              ensureInventorySpace()
             end
           end
         end
@@ -1486,24 +1341,13 @@ function isResume()
     -- Read in the startup params
     quarryWidth = readNumber(resumeFile)
     startHeight = readNumber(resumeFile)
-    noiseBlocksCount = readNumber(resumeFile)
-    lastEmptySlot = readNumber(resumeFile)
     resumeFile.close()
 
     -- If the parameters were successfully read, then set the resuming flag to true
-    if ((quarryWidth ~= nil) and (startHeight ~= nil) and (noiseBlocksCount ~= nil) and (lastEmptySlot ~= nil)) then
+    if ((quarryWidth ~= nil) and (startHeight ~= nil)) then
 
       resuming = true
       writeMessage("Read params", messageLevel.DEBUG)
-
-      -- Determine the look for chest and mining offset
-      if (lastEmptySlot == 14) then
-        lookForChests = true
-        miningOffset = 0
-      else
-        lookForChests = false
-        miningOffset = 1
-      end
 
       -- Get the turtle resume location
       resumeFile = fs.open(oreQuarryLocation, "r")
@@ -1660,82 +1504,68 @@ if (paramsOK == true) then
   currZ = 0
   currOrient = direction.FORWARD
 
-  -- Calculate which blocks in the inventory signify noise blocks
-  if (resuming == false) then
-    determineNoiseBlocksCountCount()
+  -- If we are supporting resume (and are not currently in the process of resuming)
+  -- then store startup parameters in appropriate files
+  if ((supportResume == true) and (resuming == false)) then
+    -- Write the startup parameters to  file
+    local outputFile = io.open(startupParamsFile, "w")
+    outputFile:write(quarryWidth)
+    outputFile:write("\n")
+    outputFile:write(startHeight)
+    outputFile:write("\n")
+    outputFile:close()
   end
 
-  if ((noiseBlocksCount == 0) or (noiseBlocksCount > 13)) then
-    writeMessage("No noise blocks have been been added. Please place blocks that the turtle should not mine (e.g. Stone, Dirt, Gravel etc.) in the first few slots of the turtle\'s inventory. The first empty slot signifies the end of the noise blocks.", messageLevel.FATAL)
+  -- Setup the startup file
+
+  -- Take a backup of the current startup file
+  if (fs.exists("startup") == true) then
+    fs.copy("startup", startupBackup)
+    outputFile = io.open("startup", "a")
   else
-    -- If we are supporting resume (and are not currently in the process of resuming)
-    -- then store startup parameters in appropriate files
-    if ((supportResume == true) and (resuming == false)) then
-      -- Write the startup parameters to  file
-      local outputFile = io.open(startupParamsFile, "w")
-      outputFile:write(quarryWidth)
-      outputFile:write("\n")
-      outputFile:write(startHeight)
-      outputFile:write("\n")
-      outputFile:write(noiseBlocksCount)
-      outputFile:write("\n")
-      outputFile:write(lastEmptySlot)
-      outputFile:write("\n")
-      outputFile:close()
+    outputFile = io.open("startup", "w")
+  end
 
-      -- Setup the startup file
+  -- Write an info message so that people know how to get out of auto-resume
+  outputFile:write("\nprint(\"Running auto-restart...\")\n")
+  outputFile:write("print(\"If you want to stop auto-resume and restore original state:\")\n")
+  outputFile:write("print(\"1) Hold Ctrl-T until the program terminates\")\n")
+  outputFile:write("print(\"2) Type \\\"rm startup\\\" (without quotes) and hit Enter\")\n")
+  outputFile:write("print(\"\")\n\n")
 
-      -- Take a backup of the current startup file
-      if (fs.exists("startup") == true) then
-        fs.copy("startup", startupBackup)
-        outputFile = io.open("startup", "a")
-      else
-        outputFile = io.open("startup", "w")
-      end
+  -- Also run in parallel fuel broadcast program
+  outputFile:write("shell.openTab(\"")
+  outputFile:write("fuel.lua")
+  outputFile:write("\")\n")
 
-      -- Write an info message so that people know how to get out of auto-resume
-      outputFile:write("\nprint(\"Running auto-restart...\")\n")
-      outputFile:write("print(\"If you want to stop auto-resume and restore original state:\")\n")
-      outputFile:write("print(\"1) Hold Ctrl-T until the program terminates\")\n")
-      outputFile:write("print(\"2) Type \\\"rm startup\\\" (without quotes) and hit Enter\")\n")
-      outputFile:write("print(\"\")\n\n")
+  -- Write the code required to restart the turtle
+  outputFile:write("shell.run(\"")
+  outputFile:write(shell.getRunningProgram())
+  outputFile:write("\")\n")
+  outputFile:close()
 
-      -- Also run in parallel fuel broadcast program
-      outputFile:write("shell.openTab(\"")
-      outputFile:write("fuel.lua")
-      outputFile:write("\")\n")
+  -- Create a Quarry
+  turtle.select(1)
+  currentlySelectedSlot = 1
+  createQuarry()
 
-      -- Write the code required to restart the turtle
-      outputFile:write("shell.run(\"")
-      outputFile:write(shell.getRunningProgram())
-      outputFile:write("\")\n")
-      outputFile:close()
-
+  -- Restore the file system to its original configuration
+  if (supportResume == true) then
+    fs.delete("startup")
+    if (fs.exists(startupBackup) == true) then
+      fs.move(startupBackup, "startup")
     end
 
-    -- Create a Quarry
-    turtle.select(1)
-    currentlySelectedSlot = 1
-    createQuarry()
+    if (fs.exists(startupParamsFile) == true) then
+      fs.delete(startupParamsFile)
+    end
 
-    -- Restore the file system to its original configuration
-    if (supportResume == true) then
-      fs.delete("startup")
-      if (fs.exists(startupBackup) == true) then
-        fs.move(startupBackup, "startup")
-      end
+    if (fs.exists(oreQuarryLocation) == true) then
+      fs.delete(oreQuarryLocation)
+    end
 
-      if (fs.exists(startupParamsFile) == true) then
-        fs.delete(startupParamsFile)
-      end
-
-      if (fs.exists(oreQuarryLocation) == true) then
-        fs.delete(oreQuarryLocation)
-      end
-
-      if (fs.exists(returnToStartFile) == true) then
-        fs.delete(returnToStartFile)
-      end
+    if (fs.exists(returnToStartFile) == true) then
+      fs.delete(returnToStartFile)
     end
   end
 end
