@@ -25,7 +25,6 @@ local levelToReturnTo -- The level that the turtle should return to in order to 
 local startupParamsFile = "OreQuarryParams.txt"
 local oreQuarryLocation = "OreQuarryLocation.txt"
 local returnToStartFile = "OreQuarryReturn.txt"
-local startupBackup = "startup_bak"
 local supportResume = true -- Determines whether the turtle is being run in the mode that supports resume
 local resuming = false -- Determines whether the turtle is currently in the process of resuming
 local resumeX
@@ -1394,11 +1393,9 @@ if (paramsOK == true) then
     outputFile:close()
   end
 
-  -- Setup the startup file
-
   -- Take a backup of the current startup file
   if (fs.exists("startup") == true) then
-    fs.copy("startup", startupBackup)
+    fs.delete("startup")
     outputFile = io.open("startup", "a")
   else
     outputFile = io.open("startup", "w")
@@ -1428,11 +1425,6 @@ if (paramsOK == true) then
 
   -- Restore the file system to its original configuration
   if (supportResume == true) then
-    fs.delete("startup")
-    if (fs.exists(startupBackup) == true) then
-      fs.move(startupBackup, "startup")
-    end
-
     if (fs.exists(startupParamsFile) == true) then
       fs.delete(startupParamsFile)
     end

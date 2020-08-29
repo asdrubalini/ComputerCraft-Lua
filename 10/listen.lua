@@ -1,4 +1,4 @@
-local modem = peripheral.wrap("left")
+local modem = peripheral.wrap("right")
 
 modem.open(1)
 

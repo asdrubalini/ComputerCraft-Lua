@@ -5,5 +5,4 @@ print("1) Hold Ctrl-T until the program terminates")
 print("2) Type \"rm startup\" (without quotes) and hit Enter")
 print("")
 
-shell.openTab("fuel.lua")
 shell.run("quarry.lua")

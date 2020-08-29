@@ -11,16 +11,11 @@ miningState = { START=0, LAYER=1, EMPTYCHESTDOWN=2, EMPTYINVENTORY=3 }
 
 local messageOutputLevel = messageLevel.DEBUG
 local messageOutputFileName
-local fuelLevelToRefuelAt = 5
-local refuelItemsToUseWhenRefuelling = 63
-local emergencyFuelToRetain = 0
 local maximumGravelStackSupported = 25 -- The number of stacked gravel or sand blocks supported
 local returningToStart = false
 local miningOffset = 1 -- The offset to the mining layer. This is set depending on whether chests are being looked for or not
-local lastEmptySlot = 15 -- Never supporting chests
 local turtleId
 local isWirelessTurtle
-local currentlySelectedSlot = 0 -- The slot that the last noise block was found in
 local lastMoveNeededDig = true -- Determines whether the last move needed a dig first
 local haveBeenAtZeroZeroOnLayer -- Determines whether the turtle has been at (0, 0) in this mining layer
 local orientationAtZeroZero -- The turtle's orientation when it was at (0, 0)
@@ -30,7 +25,6 @@ local levelToReturnTo -- The level that the turtle should return to in order to 
 local startupParamsFile = "OreQuarryParams.txt"
 local oreQuarryLocation = "OreQuarryLocation.txt"
 local returnToStartFile = "OreQuarryReturn.txt"
-local startupBackup = "startup_bak"
 local supportResume = true -- Determines whether the turtle is being run in the mode that supports resume
 local resuming = false -- Determines whether the turtle is currently in the process of resuming
 local resumeX
@@ -98,7 +92,7 @@ function ensureInventorySpace()
   if (returningToStart == false) then
 
     -- If the last inventory slot is full, then need to return to the start and empty
-    if (turtle.getItemCount(lastEmptySlot) > 0) then
+    if (turtle.getItemCount(16) > 0) then
 
       -- Return to the starting point and empty the inventory, then go back to mining
       returnToStartAndUnload(true)
@@ -188,9 +182,9 @@ function returnToStartAndUnload(returnBackToMiningPoint)
 
   -- Store the current location and orientation so that it can be returned to
   currMiningState = miningState.EMPTYINVENTORY
-  writeMessage("last item count = "..turtle.getItemCount(lastEmptySlot), messageLevel.DEBUG)
+  writeMessage("last item count = "..turtle.getItemCount(16), messageLevel.DEBUG)
 
-  if ((turtle.getItemCount(lastEmptySlot) > 0) or (returnBackToMiningPoint == false)) then
+  if ((turtle.getItemCount(16) > 0) or (returnBackToMiningPoint == false)) then
 
     writeMessage("Heading back to surface", messageLevel.DEBUG)
 
@@ -267,8 +261,8 @@ function returnToStartAndUnload(returnBackToMiningPoint)
     -- Face the chest
     turtleSetOrientation(direction.BACK)
 
-    -- Loop over each of the slots (except the 16th one which stores fuel)
-    while (slotLoop < 16) do
+    -- Loop over each of the slots
+    while (slotLoop <= 16) do
       turtle.select(slotLoop) -- Don't bother updating selected slot variable as it will set later in this function
       -- Drop all the items in this slot
       writeMessage("Dropping (all) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
@@ -279,34 +273,9 @@ function returnToStartAndUnload(returnBackToMiningPoint)
       slotLoop = slotLoop + 1
     end
 
-    -- While we are here, refill the fuel items if there is capacity
-    if (turtle.getItemCount(16) < 64) then
-      turtleSetOrientation(direction.LEFT)
-      turtle.select(16) -- Don't bother updating selected slot variable as it will set later in this function
-      local currFuelItems = turtle.getItemCount(16)
-      turtle.suck()
-      while ((currFuelItems ~= turtle.getItemCount(16)) and (turtle.getItemCount(16) < 64)) do
-        currFuelItems = turtle.getItemCount(16)
-        turtle.suck()
-      end
-
-      slotLoop = 1
-      -- Have now picked up all the items that we can. If we have also picked up some
-      -- additional fuel in some of the other slots, then drop it again
-      while (slotLoop <= lastEmptySlot) do
-        -- Drop any items found in this slot
-        if (turtle.getItemCount(slotLoop) > 0) then
-          turtle.select(slotLoop) -- Don't bother updating selected slot variable as it will set later in this function
-          turtle.dropUp()
-        end
-        slotLoop = slotLoop + 1
-      end
-    end
-
     -- Select the 1st slot because sometimes when leaving the 15th or 16th slots selected it can result
     -- in that slot being immediately filled (resulting in the turtle returning to base again too soon)
     turtle.select(1)
-    currentlySelectedSlot = 1
   end
 
   -- If required, move back to the point that we were mining at before returning to the start
@@ -524,8 +493,6 @@ function moveTurtle(moveFn, detectFn, digFn, attackFn, compareFn, suckFn, maxDig
     prevX = currX
     prevY = currY
     prevZ = currZ
-
-    ensureFuel()
 
     -- Flag to determine whether digging has been tried yet. If it has
     -- then pause briefly before digging again to allow sand or gravel to
@@ -1390,8 +1357,8 @@ if ((paramsOK == false) and (resuming == false)) then
 end
 
 if (paramsOK == true) then
-  if ((startHeight < 6) or (startHeight > 128)) then
-    writeMessage("turtleY must be between 6 and 128", messageLevel.FATAL)
+  if ((startHeight < 6) or (startHeight > 256)) then
+    writeMessage("turtleY must be between 6 and 256", messageLevel.FATAL)
     paramsOK = false
   end
 
@@ -1403,9 +1370,9 @@ end
 
 if (paramsOK == true) then
   if (resuming == true) then
-    writeMessage("Resuming Ore Quarry...", messageLevel.INFO)
+    writeMessage("Resuming quarry...", messageLevel.INFO)
   else
-    writeMessage("Starting OreQuarry", messageLevel.INFO)
+    writeMessage("Starting quarry", messageLevel.INFO)
   end
 
   -- Set the turtle's starting position
@@ -1426,11 +1393,9 @@ if (paramsOK == true) then
     outputFile:close()
   end
 
-  -- Setup the startup file
-
   -- Take a backup of the current startup file
   if (fs.exists("startup") == true) then
-    fs.copy("startup", startupBackup)
+    fs.delete("startup")
     outputFile = io.open("startup", "a")
   else
     outputFile = io.open("startup", "w")
@@ -1456,16 +1421,10 @@ if (paramsOK == true) then
 
   -- Create a Quarry
   turtle.select(1)
-  currentlySelectedSlot = 1
   createQuarry()
 
   -- Restore the file system to its original configuration
   if (supportResume == true) then
-    fs.delete("startup")
-    if (fs.exists(startupBackup) == true) then
-      fs.move(startupBackup, "startup")
-    end
-
     if (fs.exists(startupParamsFile) == true) then
       fs.delete(startupParamsFile)
     end
