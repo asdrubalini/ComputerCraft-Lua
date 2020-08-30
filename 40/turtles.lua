@@ -6,7 +6,7 @@ term.write("Single turtle diameter: ")
 local diameter = tonumber(read())
 
 term.write("Current height: ")
-local height = tonumber(read()) - 4
+local height = tonumber(read())
 
 local command = "quarry.lua " .. diameter .. " " .. height
 

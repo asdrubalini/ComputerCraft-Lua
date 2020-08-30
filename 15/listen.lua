@@ -1,4 +1,15 @@
-local modem = peripheral.wrap("left")
+local modemLeft = peripheral.wrap("left")
+local modemRight = peripheral.wrap("right")
+local modem
+
+if modemLeft then
+    modem = modemLeft
+elseif modemRight then
+    modem = modemRight
+else
+    print("Unable to find modem")
+    os.exit()
+end
 
 modem.open(1)
 
@@ -9,14 +20,13 @@ end
 while true do
     local event, modemSide, senderChannel, replyChannel, message, senderDistance = os.pullEvent("modem_message")
 
+    print(message)
+
     if string.starts(message, "quarry") then
         modem.transmit(2, 3, os.getComputerLabel() .. " starting")
 
-        turtle.select(1)
-        turtle.digUp()
-
         shell.openTab(message)
-        shell.openTab("fuel.lua")
+        shell.run("fuel.lua")
         break
     end
 end

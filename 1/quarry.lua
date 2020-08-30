@@ -25,6 +25,7 @@ local levelToReturnTo -- The level that the turtle should return to in order to 
 local startupParamsFile = "OreQuarryParams.txt"
 local oreQuarryLocation = "OreQuarryLocation.txt"
 local returnToStartFile = "OreQuarryReturn.txt"
+local resumeFlagFile = "resume.txt"
 local supportResume = true -- Determines whether the turtle is being run in the mode that supports resume
 local resuming = false -- Determines whether the turtle is currently in the process of resuming
 local resumeX
@@ -1393,31 +1394,11 @@ if (paramsOK == true) then
     outputFile:close()
   end
 
-  -- Take a backup of the current startup file
-  if (fs.exists("startup") == true) then
-    fs.delete("startup")
-    outputFile = io.open("startup", "a")
-  else
-    outputFile = io.open("startup", "w")
-  end
-
-  -- Write an info message so that people know how to get out of auto-resume
-  outputFile:write("\nprint(\"Running auto-restart...\")\n")
-  outputFile:write("print(\"If you want to stop auto-resume and restore original state:\")\n")
-  outputFile:write("print(\"1) Hold Ctrl-T until the program terminates\")\n")
-  outputFile:write("print(\"2) Type \\\"rm startup\\\" (without quotes) and hit Enter\")\n")
-  outputFile:write("print(\"\")\n\n")
-
-  -- Also run in parallel fuel broadcast program
-  outputFile:write("shell.openTab(\"")
-  outputFile:write("fuel.lua")
-  outputFile:write("\")\n")
-
-  -- Write the code required to restart the turtle
-  outputFile:write("shell.run(\"")
-  outputFile:write(shell.getRunningProgram())
-  outputFile:write("\")\n")
-  outputFile:close()
+  -- create a file called `resume` which indicates to the existing startup file
+  -- that a quarry job has been already started up
+  resumeFile = fs.open(resumeFlagFile, "w")
+  resumeFile.write("\n")
+  resumeFile.close()
 
   -- Create a Quarry
   turtle.select(1)
@@ -1435,6 +1416,10 @@ if (paramsOK == true) then
 
     if (fs.exists(returnToStartFile) == true) then
       fs.delete(returnToStartFile)
+    end
+
+    if (fs.exists(resumeFlagFile) == true) then
+      fs.delete(resumeFlagFile)
     end
   end
 end

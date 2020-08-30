@@ -2,12 +2,42 @@ local sapling_name = "minecraft:spruce_sapling"
 local block_name = "minecraft:spruce_log"
 local leaves_name = "minecraft:spruce_leaves"
 local sleep_duration = 120
+local resumeFileName = "resume.txt"
 
 local storeMaterials = {
     block_name,
     leaves_name,
     "minecraft:stick"
 }
+
+
+function updateResumeFile(upCount, facing)
+    local file = fs.open(resumeFileName, "w")
+    file.writeLine(upCount)
+    file.writeLine(facing)
+    file.close()
+end
+
+function checkResumeFile()
+    return fs.exists(resumeFileName)
+end
+
+function resumeFromFile()
+    local file = fs.open(resumeFileName, "r")
+    local upCount = file.readLine()
+    local facing = file.readLine()
+    file.close()
+
+    if facing == "right" then
+        turtle.turnLeft()
+    elseif facing == "left" then
+        turtle.turnRight()
+    end
+
+    for i=1,upCount do
+        turtle.down()
+    end
+end
 
 
 function makeSaplingGrow()
@@ -40,6 +70,8 @@ function digTree()
 
         upCount = upCount + 1
 
+        updateResumeFile(upCount, "normal")
+
         local success, front_block = turtle.inspect()
 
         if not success then
@@ -49,6 +81,8 @@ function digTree()
 
     for i=1,upCount do
         turtle.down()
+
+        updateResumeFile(upCount - i, "normal")
     end
 end
 
@@ -58,8 +92,10 @@ function takeBoneMeal()
     local neededBoneMeal = turtle.getItemSpace()
 
     turtle.turnRight()
+    updateResumeFile(0, "right")
     turtle.suck(neededBoneMeal)
     turtle.turnLeft()
+    updateResumeFile(0, "normal")
 end
 
 function takeSapling()
@@ -68,8 +104,10 @@ function takeSapling()
     local neededSaplings = turtle.getItemSpace()
 
     turtle.turnLeft()
+    updateResumeFile(0, "left")
     turtle.suck(neededSaplings)
     turtle.turnRight()
+    updateResumeFile(0, "normal")
 end
 
 function storeMaterial()
@@ -83,6 +121,11 @@ function storeMaterial()
     end
 
     turtle.select(1)
+end
+
+-- resume to normal position based on file
+if checkResumeFiler() then
+    resumeFromFile()
 end
 
 while true do

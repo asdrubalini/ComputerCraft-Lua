@@ -4,8 +4,8 @@ local modem = peripheral.wrap("right")
 monitor.setTextScale(2)
 
 local turtles_data = {}
-local mining_turtles = 16
-local chest_turtles = 4
+local mining_turtles = 2
+local chest_turtles = 0
 
 modem.open(2)
 
