@@ -124,7 +124,7 @@ function storeMaterial()
 end
 
 -- resume to normal position based on file
-if checkResumeFiler() then
+if checkResumeFile() then
     resumeFromFile()
 end
 

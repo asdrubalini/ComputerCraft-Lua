@@ -47,6 +47,19 @@ local currMiningState = miningState.START
 local startHeight -- Represents the height (y co-ord) that the turtle started at
 local quarryWidth -- Represents the length of the mines that the turtle will dig
 
+local wantedItems = {
+  "minecraft:sand",
+  "minecraft:obsidian",
+  "minecraft:diamond",
+  "minecraft:coal",
+  "minecraft:iron_ore",
+  "minecraft:gold_ore",
+  "minecraft:redstone",
+  "minecraft:lapis_lazuli",
+  "computercraft:turtle_advanced",
+  "computercraft:turtle"
+}
+
 -- ********************************************************************************** --
 -- Writes an output message
 -- ********************************************************************************** --
@@ -268,7 +281,13 @@ function returnToStartAndUnload(returnBackToMiningPoint)
       -- Drop all the items in this slot
       writeMessage("Dropping (all) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
       if (turtle.getItemCount(slotLoop) > 0) then
-        turtle.dropUp()
+        item = turtle.getItemDetail().name
+
+        if isWanted(item) then
+          turtle.dropUp()
+        else
+          turtle.dropDown()
+        end
       end
 
       slotLoop = slotLoop + 1
@@ -1300,6 +1319,19 @@ function isResume()
   end
 
   return returnVal
+end
+
+-- ********************************************************************************** --
+-- Check if the item is wanted or not
+-- ********************************************************************************** --
+function isWanted(item)
+  for _, wanted in ipairs(wantedItems) do
+    if item == wanted then
+      return true
+    end
+  end
+
+  return false
 end
 
 -- ********************************************************************************** --
