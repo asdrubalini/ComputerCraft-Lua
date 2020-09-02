@@ -9,7 +9,7 @@ direction = { FORWARD=0, RIGHT=1, BACK=2, LEFT=3, UP=4, DOWN=5 }
 -- Enumeration of mining states
 miningState = { START=0, LAYER=1, EMPTYCHESTDOWN=2, EMPTYINVENTORY=3 }
 
-local messageOutputLevel = messageLevel.DEBUG
+local messageOutputLevel = messageLevel.WARNING
 local messageOutputFileName
 local maximumGravelStackSupported = 25 -- The number of stacked gravel or sand blocks supported
 local returningToStart = false
@@ -56,6 +56,7 @@ local wantedItems = {
   "minecraft:gold_ore",
   "minecraft:redstone",
   "minecraft:lapis_lazuli",
+  "minecraft:emerald",
   "computercraft:turtle_advanced",
   "computercraft:turtle"
 }
