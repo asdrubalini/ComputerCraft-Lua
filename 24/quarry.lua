@@ -20,6 +20,7 @@ local lastMoveNeededDig = true -- Determines whether the last move needed a dig 
 local haveBeenAtZeroZeroOnLayer -- Determines whether the turtle has been at (0, 0) in this mining layer
 local orientationAtZeroZero -- The turtle's orientation when it was at (0, 0)
 local levelToReturnTo -- The level that the turtle should return to in order to head back to the start to unload
+local ensureInventorySpaceCounter = 128 -- no need to ensure inventory space every time
 
 -- Variables used to support a resume
 local startupParamsFile = "OreQuarryParams.txt"
@@ -137,26 +138,37 @@ end
 function ensureInventorySpace()
 
   -- If already returning to start, then don't need to do anything
-  if (returningToStart == false) then
+  if (returningToStart) then
+    return
+  end
 
-    -- First dump down all the unwanted stuff, so we don't need to return to chest just for
-    -- a few items. This saves fuel and time
-    dumpDownBlacklist()
+  -- Do ensure inventory space when ensureInventorySpaceCounter is at zero
+  if (ensureInventorySpaceCounter ~= 0) then
+    ensureInventorySpaceCounter = ensureInventorySpaceCounter - 1
+    return
+  end
 
-    -- Check how many slots are empty
-    local emptySlots = 16
-    
-    for slot=1,16 do
-      if (turtle.getItemCount(slot) > 0) then
-        emptySlots = emptySlots - 1
-      end
-    end
+  -- Reset ensureInventorySpaceCounter to its original value
+  ensureInventorySpaceCounter = 128
 
-    -- If we have less than x empty slots, then return to start and unload
-    if (emptySlots <= 3) then
-      returnToStartAndUnload(true)
+  -- First dump down all the unwanted stuff, so we don't need to return to chest just for
+  -- a few items. This saves fuel and time
+  dumpDownBlacklist()
+
+  -- Check how many slots are empty
+  local emptySlots = 16
+  
+  for slot=1,16 do
+    if (turtle.getItemCount(slot) > 0) then
+      emptySlots = emptySlots - 1
     end
   end
+
+  -- If we have less than x empty slots, then return to start and unload
+  if (emptySlots <= 3) then
+    returnToStartAndUnload(true)
+  end
+
 end
 
 -- ********************************************************************************** --
