@@ -47,7 +47,8 @@ local currMiningState = miningState.START
 local startHeight -- Represents the height (y co-ord) that the turtle started at
 local quarryWidth -- Represents the length of the mines that the turtle will dig
 
-local wantedItems = {
+local whitelistItems = {
+  -- overworld
   "minecraft:sand",
   "minecraft:obsidian",
   "minecraft:diamond",
@@ -58,8 +59,21 @@ local wantedItems = {
   "minecraft:lapis_lazuli",
   "minecraft:emerald",
   "computercraft:turtle_advanced",
-  "computercraft:turtle"
+  "computercraft:turtle",
+
+  -- nether
+  "minecraft:gold_nugget",
+  "minecraft:quartz",
+  "minecraft:ancient_debris",
+  "minecraft:glowstone_dust"
 }
+
+-- reverse table once for faster index lookup
+local whitelistItemsReverse = {}
+
+for _, wanted in ipairs(whitelistItems) do
+  whitelistItemsReverse[wanted] = true
+end
 
 -- ********************************************************************************** --
 -- Writes an output message
@@ -95,6 +109,25 @@ function writeMessage(message, msgLevel)
 end
 
 -- ********************************************************************************** --
+-- Checks every inventory slot and dump down all the items that are not
+-- in the whitelist
+-- ********************************************************************************** --
+function dumpDownBlacklist()
+  for slot=1,16 do
+    turtle.select(slot)
+
+    if (turtle.getItemCount(slot) > 0) then
+      local item = turtle.getItemDetail().name
+
+      -- drop down if not in whitelist
+      if isWhitelist(item) == false then
+        turtle.dropDown()
+      end
+    end
+  end
+end
+
+-- ********************************************************************************** --
 -- Checks that the turtle has inventory space by checking for spare slots and returning
 -- to the starting point to empty out if it doesn't.
 --
@@ -106,10 +139,21 @@ function ensureInventorySpace()
   -- If already returning to start, then don't need to do anything
   if (returningToStart == false) then
 
-    -- If the last inventory slot is full, then need to return to the start and empty
-    if (turtle.getItemCount(16) > 0) then
+    -- First dump down all the unwanted stuff, so we don't need to return to chest just for
+    -- a few items. This saves fuel and time
+    dumpDownBlacklist()
 
-      -- Return to the starting point and empty the inventory, then go back to mining
+    -- Check how many slots are empty
+    local emptySlots = 16
+    
+    for slot=1,16 do
+      if (turtle.getItemCount(slot) > 0) then
+        emptySlots = emptySlots - 1
+      end
+    end
+
+    -- If we have less than x empty slots, then return to start and unload
+    if (emptySlots <= 3) then
       returnToStartAndUnload(true)
     end
   end
@@ -270,28 +314,16 @@ function returnToStartAndUnload(returnBackToMiningPoint)
       writeMessage("Current height is greater than start height in returnToStartAndUnload", messageLevel.ERROR)
     end
 
-    -- Empty the inventory
-    local slotLoop = 1
-
     -- Face the chest
     turtleSetOrientation(direction.BACK)
 
-    -- Loop over each of the slots
-    while (slotLoop <= 16) do
-      turtle.select(slotLoop) -- Don't bother updating selected slot variable as it will set later in this function
-      -- Drop all the items in this slot
-      writeMessage("Dropping (all) from slot "..slotLoop.." ["..turtle.getItemCount(slotLoop).."]", messageLevel.DEBUG)
-      if (turtle.getItemCount(slotLoop) > 0) then
-        item = turtle.getItemDetail().name
+    -- Dump every unwanted item
+    dumpDownBlacklist()
 
-        if isWanted(item) then
-          turtle.dropUp()
-        else
-          turtle.dropDown()
-        end
-      end
-
-      slotLoop = slotLoop + 1
+    -- Turtle's inventory now only has the stuff we want
+    for slot=1,16 do
+      turtle.select(slot)
+      turtle.dropUp()
     end
 
     -- Select the 1st slot because sometimes when leaving the 15th or 16th slots selected it can result
@@ -395,54 +427,6 @@ function returnToStartAndUnload(returnBackToMiningPoint)
 
   returningToStart = false
 
-end
-
--- ********************************************************************************** --
--- Empties a chest's contents
--- ********************************************************************************** --
-function emptyChest(suckFn)
-
-  local prevInventoryCount = {}
-  local inventoryLoop
-  local chestEmptied = false
-
-  -- Record the number of items in each of the inventory slots
-  for inventoryLoop = 1, 16 do
-    prevInventoryCount[inventoryLoop] = turtle.getItemCount(inventoryLoop)
-  end
-
-  while (chestEmptied == false) do
-    -- Pick up the next item
-    suckFn()
-
-    -- Determine the number of items in each of the inventory slots now
-    local newInventoryCount = {}
-    for inventoryLoop = 1, 16 do
-      newInventoryCount[inventoryLoop] = turtle.getItemCount(inventoryLoop)
-    end
-
-    -- Now, determine whether there have been any items taken from the chest
-    local foundDifferentItemCount = false
-    inventoryLoop = 1
-    while ((foundDifferentItemCount == false) and (inventoryLoop <= 16)) do
-      if (prevInventoryCount[inventoryLoop] ~= newInventoryCount[inventoryLoop]) then
-        foundDifferentItemCount = true
-      else
-        inventoryLoop = inventoryLoop + 1
-      end
-    end
-
-    -- If no items have been found with a different item count, then the chest has been emptied
-    chestEmptied = not foundDifferentItemCount
-
-    if (chestEmptied == false) then
-      prevInventoryCount = newInventoryCount
-      -- Check that there is sufficient inventory space as may have picked up a block
-      ensureInventorySpace()
-    end
-  end
-
-  writeMessage("Finished emptying chest", messageLevel.DEBUG)
 end
 
 -- ********************************************************************************** --
@@ -1325,14 +1309,8 @@ end
 -- ********************************************************************************** --
 -- Check if the item is wanted or not
 -- ********************************************************************************** --
-function isWanted(item)
-  for _, wanted in ipairs(wantedItems) do
-    if item == wanted then
-      return true
-    end
-  end
-
-  return false
+function isWhitelist(item)
+  return whitelistItemsReverse[item] == true
 end
 
 -- ********************************************************************************** --
