@@ -20,7 +20,7 @@ local lastMoveNeededDig = true -- Determines whether the last move needed a dig 
 local haveBeenAtZeroZeroOnLayer -- Determines whether the turtle has been at (0, 0) in this mining layer
 local orientationAtZeroZero -- The turtle's orientation when it was at (0, 0)
 local levelToReturnTo -- The level that the turtle should return to in order to head back to the start to unload
-local ensureInventorySpaceCounter = 128 -- no need to ensure inventory space every time
+local ensureInventorySpaceCounter = 32 -- no need to ensure inventory space every time
 
 -- Variables used to support a resume
 local startupParamsFile = "OreQuarryParams.txt"
@@ -51,6 +51,7 @@ local quarryWidth -- Represents the length of the mines that the turtle will dig
 local whitelistItems = {
   -- overworld
   "minecraft:sand",
+  "minecraft:sandstone",
   "minecraft:obsidian",
   "minecraft:diamond",
   "minecraft:coal",
@@ -74,6 +75,58 @@ local whitelistItemsReverse = {}
 
 for _, wanted in ipairs(whitelistItems) do
   whitelistItemsReverse[wanted] = true
+end
+
+-- HTTP communication
+local httpServerAddress = "http://10.0.0.10:5000/"
+
+
+-- ********************************************************************************** --
+-- Send current fuel value via HTTP
+-- ********************************************************************************** --
+function httpSendData(data)
+  payload = {
+    id = os.getComputerID(),
+    label = os.getComputerLabel(),
+    data = data
+  }
+
+  http.post(httpServerAddress, textutils.serializeJSON(payload))
+end
+
+-- ********************************************************************************** --
+-- Send current fuel value via HTTP
+-- ********************************************************************************** --
+function sendFuel()
+  local data = {
+    type = "fuel",
+    fuel = turtle.getFuelLevel()
+  }
+
+  httpSendData(data)
+end
+
+-- ********************************************************************************** --
+-- Send inventory status to the server
+-- ********************************************************************************** --
+function sendInventory(inventory)
+  local data = {
+    type = "inventory",
+    inventory = inventory
+  }
+
+  httpSendData(data)
+end
+
+-- ********************************************************************************** --
+-- Inform the server that the turtle is unloading
+-- ********************************************************************************** --
+function sendUnloading(inventory)
+  local data = {
+    type = "unloading",
+  }
+
+  httpSendData(data)
 end
 
 -- ********************************************************************************** --
@@ -135,8 +188,7 @@ end
 -- Takes the position required to move to in order to empty the turtle's inventory
 -- should it be full as arguments
 -- ********************************************************************************** --
-function ensureInventorySpace()
-
+function checkParameters()
   -- If already returning to start, then don't need to do anything
   if (returningToStart) then
     return
@@ -149,7 +201,10 @@ function ensureInventorySpace()
   end
 
   -- Reset ensureInventorySpaceCounter to its original value
-  ensureInventorySpaceCounter = 128
+  ensureInventorySpaceCounter = 32
+
+  -- Send fuel value to the server
+  sendFuel()
 
   -- First dump down all the unwanted stuff, so we don't need to return to chest just for
   -- a few items. This saves fuel and time
@@ -157,16 +212,27 @@ function ensureInventorySpace()
 
   -- Check how many slots are empty
   local emptySlots = 16
+  local inventory = {}
   
   for slot=1,16 do
     if (turtle.getItemCount(slot) > 0) then
       emptySlots = emptySlots - 1
+
+      local itemDetail = turtle.getItemDetail(slot)
+
+      table.insert(inventory, {
+        name = itemDetail.name,
+        count = itemDetail.count
+      })
     end
   end
+
+  sendInventory(inventory)
 
   -- If we have less than x empty slots, then return to start and unload
   if (emptySlots <= 3) then
     returnToStartAndUnload(true)
+    sendUnloading()
   end
 
 end
@@ -645,7 +711,7 @@ function turtleForward()
 
   if (returnVal == true) then
     -- Check that there is sufficient inventory space as may have picked up a block
-    ensureInventorySpace()
+    checkParameters()
   end
 
   return returnVal
@@ -660,7 +726,7 @@ function turtleUp()
 
   if (returnVal == true) then
     -- Check that there is sufficient inventory space as may have picked up a block
-    ensureInventorySpace()
+    checkParameters()
   end
 
   return returnVal
@@ -675,7 +741,7 @@ function turtleDown()
 
   if (returnVal == true) then
     -- Check that there is sufficient inventory space as may have picked up a block
-    ensureInventorySpace()
+    checkParameters()
   end
 
   return returnVal
@@ -742,7 +808,7 @@ function turtleBack()
 
   if (returnVal == true) then
     -- Check that there is sufficient inventory space as may have picked up a block
-    ensureInventorySpace()
+    checkParameters()
   end
 
   return returnVal
@@ -1056,7 +1122,7 @@ function createQuarry()
         -- if we're not looking for chests since the program doesn't support chests in
         -- bedrock
         turtle.digDown()
-        ensureInventorySpace()
+        checkParameters()
       elseif (mineRows > 1) then
         -- Move into position for mining the next row
         if (onNearSideOfQuarry == diggingAway) then
@@ -1085,11 +1151,11 @@ function createQuarry()
         -- as we'll be digging down anyway)
         if (miningLevel ~= bottomLayer) then
           turtle.digDown()
-          ensureInventorySpace()
+          checkParameters()
 
           if (turtle.detectDown() == true) then
             turtle.digDown()
-            ensureInventorySpace()
+            checkParameters()
           end
         end
 
@@ -1163,11 +1229,11 @@ function createQuarry()
           -- less time to try to dig and fail as it does to do detect and
           -- only dig if there is a block there)
           turtle.digDown()
-          ensureInventorySpace()
+          checkParameters()
           
           if (turtle.detectDown() == true) then
             turtle.digDown()
-            ensureInventorySpace()
+            checkParameters()
           end
         end
 
@@ -1178,11 +1244,11 @@ function createQuarry()
           -- less time to try to dig and fail as it does to do detect and
           -- only dig if there is a block there)
           turtle.digUp()
-          ensureInventorySpace()
+          checkParameters()
 
           if (turtle.detectUp() == true) then
             turtle.digUp()
-            ensureInventorySpace()
+            checkParameters()
           end
         end
       end
