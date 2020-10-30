@@ -50,8 +50,6 @@ local quarryWidth -- Represents the length of the mines that the turtle will dig
 
 local whitelistItems = {
   -- overworld
-  "minecraft:sand",
-  "minecraft:sandstone",
   "minecraft:obsidian",
   "minecraft:diamond",
   "minecraft:coal",
