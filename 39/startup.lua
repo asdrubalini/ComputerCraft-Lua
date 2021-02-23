@@ -3,6 +3,16 @@ local farmLength = 30
 local partsCount = 4
 local sleepTime = 5 * 60
 
+-- internal variables
+
+-- 0: FRONT
+-- 1: LEFT
+-- 2: BACK
+-- 3: RIGHT
+local facing = 0
+
+local front_distance = 0
+
 -- forward over one entire row of melons and break it
 function forwardAndDig()
     for i=1,farmLength + 1 do
