@@ -1,14 +1,8 @@
-local sapling_name = "minecraft:spruce_sapling"
-local block_name = "minecraft:spruce_log"
-local leaves_name = "minecraft:spruce_leaves"
+local sapling_name = "minecraft:oak_sapling"
+local block_name = "minecraft:oak_log"
+local leaves_name = "minecraft:oak_leaves"
 local sleep_duration = 120
 local resumeFileName = "resume.txt"
-
-local storeMaterials = {
-    block_name,
-    leaves_name,
-    "minecraft:stick"
-}
 
 
 function updateResumeFile(upCount, facing)
