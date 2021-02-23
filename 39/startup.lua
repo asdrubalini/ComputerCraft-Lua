@@ -1,7 +1,7 @@
 -- user configuration
-local farmLength = 30
-local partsCount = 4
-local sleepTime = 5 * 60
+local farmLength = 43
+local partsCount = 9
+local sleepTime = 0
 
 -- internal variables
 
@@ -15,7 +15,7 @@ local front_distance = 0
 
 -- forward over one entire row of melons and break it
 function forwardAndDig()
-    for i=1,farmLength + 1 do
+    for i = 1, farmLength + 1 do
         turtle.forward()
 
         -- last block is not a melon, so don't break it
@@ -38,21 +38,21 @@ end
 function turnToNewRow(length, direction)
     turnDirection(direction)
 
-    for i=1,length do
+    for i = 1, length do
         turtle.forward()
     end
-    
+
     turnDirection(direction)
 end
 
 function returnHome()
-    for i=1,((4 * partsCount) + partsCount - 1) do
+    for i = 1, ((4 * partsCount) + partsCount - 1) do
         turtle.forward()
     end
 end
 
 function storeInChest()
-    for slot=1,16 do
+    for slot = 1, 16 do
         turtle.select(slot)
         turtle.drop()
     end
@@ -61,7 +61,7 @@ function storeInChest()
 end
 
 while true do
-    for part=1,partsCount do
+    for part = 1, partsCount do
         forwardAndDig()
         turnToNewRow(4, "left")
         forwardAndDig()
