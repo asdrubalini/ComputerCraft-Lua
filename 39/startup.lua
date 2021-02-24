@@ -1,7 +1,7 @@
 -- user configuration
-local farmLength = 43
-local partsCount = 9
-local sleepTime = 0
+local farmLength = 30
+local partsCount = 4
+local sleepTime = 120
 
 -- internal variables
 
