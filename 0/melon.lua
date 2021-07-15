@@ -1,6 +1,8 @@
+-- Automatic melon farmer from Asdrubalini
+
 -- user configuration
-local farmLength = 30
-local partsCount = 4
+local farmLength = 128
+local partsCount = 1
 local sleepTime = 120
 
 -- internal variables
@@ -54,7 +56,7 @@ end
 function storeInChest()
     for slot = 1, 16 do
         turtle.select(slot)
-        turtle.drop()
+        turtle.dropDown()
     end
 
     turtle.select(1)
@@ -66,7 +68,7 @@ while true do
         turnToNewRow(4, "left")
         forwardAndDig()
 
-        -- if it isn't the last step, turn turn
+        -- if it isn't the last step, turn left
         if part ~= partsCount then
             turnToNewRow(1, "right")
         else

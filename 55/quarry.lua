@@ -58,6 +58,7 @@ local whitelistItems = {
   "minecraft:redstone",
   "minecraft:lapis_lazuli",
   "minecraft:emerald",
+  "minecraft:sand",
   "computercraft:turtle_advanced",
   "computercraft:turtle",
 

@@ -2,10 +2,10 @@ local modem = peripheral.wrap("back")
 
 modem.open(1)
 
-term.write("Single turtle diameter: ")
+term.write("Diameter: ")
 local diameter = tonumber(read())
 
-term.write("Current height: ")
+term.write("Height: ")
 local height = tonumber(read())
 
 local command = "quarry.lua " .. diameter .. " " .. height
