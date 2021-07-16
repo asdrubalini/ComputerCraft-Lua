@@ -60,6 +60,16 @@ function storeInChest()
     turtle.select(1)
 end
 
+-- Wait for redstone on the back
+print("Waiting for redstone signal...")
+
+while true do
+    os.pullEvent("redstone")
+    if rs.getInput("back") then
+        break
+    end
+end
+
 while true do
     for part = 1, partsCount do
         forwardAndDig()
