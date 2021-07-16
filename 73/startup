@@ -4,14 +4,11 @@
 local farmLength = 128
 local partsCount = 1
 local sleepTime = 360
+local melon_count_filename = "melons.txt"
 
 -- internal variables
 
--- 0: FRONT
--- 1: LEFT
--- 2: BACK
--- 3: RIGHT
-local facing = 0
+local melon_count = 0
 
 -- forward over one entire row of melons and break it
 function forwardAndDig()
@@ -20,7 +17,12 @@ function forwardAndDig()
 
         -- last block is not a melon, so don't break it
         if i ~= (farmLength + 1) then
-            turtle.digDown()
+            local result, error_message = turtle.digDown()
+
+            if result then
+                melon_count = melon_count + 1
+            end
+
         end
     end
 end
@@ -60,6 +62,8 @@ function storeInChest()
     turtle.select(1)
 end
 
+-- local f_melon_count = open(melon_count_filename, "w")
+
 -- Wait for redstone on the back
 print("Waiting for redstone signal...")
 
@@ -71,6 +75,8 @@ while true do
 end
 
 while true do
+    print("Broken melons:", melon_count)
+
     for part = 1, partsCount do
         forwardAndDig()
         turnToNewRow(4, "left")
@@ -89,5 +95,9 @@ while true do
         end
     end
 
-    os.sleep(sleepTime)
+    for counter = 1, sleepTime do
+        print("Sleeping...", sleepTime - counter)
+        os.sleep(1)
+    end
 end
+
