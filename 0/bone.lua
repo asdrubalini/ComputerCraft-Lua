@@ -1,6 +1,8 @@
 -- Configuration
 local internal_side_length = 6
 local sapling_block = "minecraft:oak_sapling"
+local sleep_time = 10 -- time between one tree and the other
+local structure_heigth = 7
 
 -- Internal variables
 local current_side_walked = 0
@@ -88,8 +90,15 @@ end
 
 
 -- Main
+
+for i = 1, structure_heigth do
+    turtle.up()
+end
+
 while true do
     bone_meal_front()
     tree_next()
+
+    sleep(sleep_time)
 end
 
