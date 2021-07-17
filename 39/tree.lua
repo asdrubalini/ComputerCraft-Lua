@@ -1,19 +1,29 @@
+-- TODO: don't move if no trees are ready to be chopped
+
 -- Configuration
 local side_length = 8
 local sapling_block = "minecraft:oak_sapling"
 local upper_bound_block = "minecraft:obsidian"
+local garbage_collect_period = 8 -- collect garbage every n broken trees
 
--- Internal variables
-local current_side_walked = 0
+-- Checks if there is a block in front before going forward.
+function turtle_forward_and_break()
+    if turtle.detect() then
+        turtle.dig()
+    end
+
+    turtle.forward()
+end
 
 -- Walk to the next tree
-function tree_next()
+function tree_next(current_side_walked)
     if current_side_walked + 1 == side_length then
         -- If on the edge, go on the other side
         turtle.turnRight()
-        turtle.forward()
+        turtle_forward_and_break()
         turtle.turnLeft()
-        turtle.forward()
+
+        turtle_forward_and_break()
         turtle.turnLeft()
 
         current_side_walked = 0
@@ -22,11 +32,13 @@ function tree_next()
         -- Otherwise, go as usual
         turtle.turnRight()
 
-        turtle.forward()
+        turtle_forward_and_break()
         turtle.turnLeft()
 
         current_side_walked = current_side_walked + 1
     end
+
+    return current_side_walked
 end
 
 -- Check if tree in front has grown
@@ -64,8 +76,16 @@ function break_tree_in_front()
 
     end
 
-    for i=1, up_count do
-        turtle.down()
+    -- Try to dig down. If some tree has grown when we were at the
+    -- top, try to break the blocks
+    while up_count > 0 do
+        local status = turtle.down()
+
+        if status then
+            up_count = up_count - 1
+        else
+            turtle.digDown()
+        end
     end
 end
 
@@ -116,13 +136,42 @@ function place_sapling()
     turtle.place()
 end
 
+-- Check if inventory contains any unwanted block and throw
+-- out if it does
+function throw_out_unwanted_blocks(whitelist_block)
+    for i = 1, 16 do
+        turtle.select(i)
+
+        local details = turtle.getItemDetail()
+
+        if details ~= nil and details.name ~= whitelist_block then
+            turtle.drop()
+        end
+    end
+end
+
 -- Main
+local current_side_walked = 0
+local tree_counter = 0
+
 while true do
     if has_tree_grown() then
         break_tree_in_front()
         place_sapling()
+        tree_counter = tree_counter + 1
     end
 
-    tree_next()
+    if tree_counter % garbage_collect_period == garbage_collect_period - 1 then
+        print("Collecting garbage")
+        turtle.turnLeft()
+        turtle.turnLeft()
+
+        throw_out_unwanted_blocks(sapling_block)
+
+        turtle.turnLeft()
+        turtle.turnLeft()
+    end
+
+    current_side_walked = tree_next(current_side_walked)
 end
 
