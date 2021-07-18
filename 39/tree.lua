@@ -202,6 +202,7 @@ while true do
 
         turtle.turnLeft()
         turtle.turnLeft()
+        tree_counter = 0
     end
 
     tree_next()
